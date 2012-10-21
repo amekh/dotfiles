@@ -1,0 +1,2 @@
+;; C-mにnewline-and-indentを割り当てる。
+(global-set-key (kbd "C-m") 'newline-and-indent)
