@@ -81,6 +81,19 @@ e.x, 00_hoge.el, 01_huga.el ... 99_keybind.el"
   :group 'init-loader
   :type 'regexp)
 
+;; 2011/06/12 zqwell Windows/Linux 固有設定ファイル読み込み用
+;; 参考URL: http://d.hatena.ne.jp/kiki114/20101109/1289316478
+(defcustom init-loader-win-regexp "^win-"
+  "Windows環境での起動時に読み込まれる設定ファイルにマッチする正規表現"
+  :group 'init-loader
+  :type 'regexp)
+
+(defcustom init-loader-lin-regexp "^lin-"
+  "Linux環境での起動時に読み込まれる設定ファイルにマッチする正規表現"
+  :group 'init-loader
+  :type 'regexp)
+
+
 ;;; Code
 (defun* init-loader-load (&optional (init-dir init-loader-directory))
   (let ((init-dir (init-loader-follow-symlink init-dir)))
@@ -98,6 +111,13 @@ e.x, 00_hoge.el, 01_huga.el ... 99_keybind.el"
     ;; no window
     (and (null window-system)
          (init-loader-re-load init-loader-nw-regexp init-dir))
+    ;; 2011/06/12 zqwell Windows/Linux 固有設定ファイル読み込み用
+    ;; windows
+    (and (featurep 'dos-w32)
+	 (init-loader-re-load init-loader-win-regexp init-dir))
+    ;; Linux
+    (and (equal system-type 'gnu/linux)
+	 (init-loader-re-load init-loader-lin-regexp init-dir))
 
     (when init-loader-show-log-after-init
       (add-hook  'after-init-hook 'init-loader-show-log))))
@@ -116,17 +136,28 @@ e.x, 00_hoge.el, 01_huga.el ... 99_keybind.el"
     (if s (and (stringp s) (push s err-logs)) (mapconcat 'identity (reverse err-logs) "\n"))))
 
 (defun init-loader-re-load (re dir &optional sort)
-  (let ((load-path (cons dir load-path)))
+;; 2011/06/12 zqwell load-path問題修正 (autoloadを使ったりすると問題になる)
+;  (let ((load-path (cons dir load-path)))
+  (add-to-list 'load-path dir) ; globalなload-pathを利用するようにする
     (dolist (el (init-loader--re-load-files re dir sort))
       (condition-case e
           (let ((time (car (benchmark-run (load (file-name-sans-extension el))))))
             (init-loader-log (format "loaded %s. %s" (locate-library el) time)))
         (error
-         (init-loader-error-log (error-message-string e)))))))
+	 ;; 2011/06/12 zqwell エラー箇所表示対応
+	 ;; 参考URL: http://d.hatena.ne.jp/kitokitoki/20101205/p1
+         ; (init-loader-error-log (error-message-string e))
+         (init-loader-error-log (format "%s. %s" (locate-library el) (error-message-string e)))
+	 ))));)
 
+;; 2011/06/12 zqwell elc優先読み込み対応
+;; 参考URL: http://twitter.com/#!/fkmn/statuses/21411277599
 (defun init-loader--re-load-files (re dir &optional sort)
     (loop for el in (directory-files dir t)
-          when (string-match re (file-name-nondirectory el))
+          when (and (string-match re (file-name-nondirectory el))
+                    (or (string-match "elc$" el)
+                        (and (string-match "el$" el)
+                             (not (locate-library (concat el "c"))))))
           collect (file-name-nondirectory el) into ret
           finally return (if sort (sort ret 'string<) ret)))
 
