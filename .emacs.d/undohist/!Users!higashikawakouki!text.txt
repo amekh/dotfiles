@@ -1,2 +1,0 @@
-
-((digest . "1b1eb9209cab2bf7fb5e4fce296ab411") (undo-list (2795 . 2796) 1034 nil (1 . 2795) (t 65535 . 65535)))

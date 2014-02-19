@@ -1,0 +1,6 @@
+# -*- mode: snippet -*-
+# name: script_tag
+# key: script
+# scriptŠO•”“Ç‚İ‚İƒ^ƒO
+# --
+<script type="text/javascript" src="$0"></script>
